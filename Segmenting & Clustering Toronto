@@ -1,0 +1,430 @@
+{
+    "nbformat_minor": 1, 
+    "cells": [
+        {
+            "source": "Importing Libraries", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "#from bs4 import BeautifulSoup\nimport requests\nimport pandas as pd\nimport numpy as np\nimport matplotlib.pyplot as plt \nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.cluster import KMeans \nfrom sklearn.datasets.samples_generator import make_blobs \n%matplotlib inline", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [], 
+            "execution_count": 17
+        }, 
+        {
+            "source": "Scraping Table from Website", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "dfs = pd.read_html('https://en.wikipedia.org/wiki/List_of_postal_codes_of_Canada:_M', header = 0)\nx=0\nfor df in dfs:\n    if x==0:\n     mydata = df\n     x=x+1        \n#print(mydata)", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [], 
+            "execution_count": 2
+        }, 
+        {
+            "source": "Dropping rows with missing Boroughs", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "MissingBoroughs = mydata[(mydata['Borough']=='Not assigned')].index\n#print(MissingBoroughs)\nmydata.drop(MissingBoroughs, inplace=True)\n#print(mydata)", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [], 
+            "execution_count": 3
+        }, 
+        {
+            "source": "Replacing Missing Neighborhoods with Corresponding Borough Name", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "mydata.loc[mydata['Neighbourhood'] =='Not assigned', 'Neighbourhood'] = mydata['Borough']\nmydata.head()", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "  Postcode           Borough     Neighbourhood\n2      M3A        North York         Parkwoods\n3      M4A        North York  Victoria Village\n4      M5A  Downtown Toronto      Harbourfront\n5      M5A  Downtown Toronto       Regent Park\n6      M6A        North York  Lawrence Heights", 
+                        "text/html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Postcode</th>\n      <th>Borough</th>\n      <th>Neighbourhood</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>2</th>\n      <td>M3A</td>\n      <td>North York</td>\n      <td>Parkwoods</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>M4A</td>\n      <td>North York</td>\n      <td>Victoria Village</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>M5A</td>\n      <td>Downtown Toronto</td>\n      <td>Harbourfront</td>\n    </tr>\n    <tr>\n      <th>5</th>\n      <td>M5A</td>\n      <td>Downtown Toronto</td>\n      <td>Regent Park</td>\n    </tr>\n    <tr>\n      <th>6</th>\n      <td>M6A</td>\n      <td>North York</td>\n      <td>Lawrence Heights</td>\n    </tr>\n  </tbody>\n</table>\n</div>"
+                    }, 
+                    "execution_count": 4, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 4
+        }, 
+        {
+            "source": "Getting Size of Final Data Set", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "mydata.shape", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "(212, 3)"
+                    }, 
+                    "execution_count": 7, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 7
+        }, 
+        {
+            "source": "Installing GeoCoder", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "!conda install -c conda-forge geocoder --yes\nimport geocoder", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "stream", 
+                    "name": "stdout", 
+                    "text": "Fetching package metadata .............\nSolving package specifications: .\n\nPackage plan for installation in environment /opt/conda/envs/DSX-Python35:\n\nThe following NEW packages will be INSTALLED:\n\n    geocoder:   1.38.1-py_0  conda-forge\n    orderedset: 2.0-py35_0   conda-forge\n    ratelim:    0.1.6-py35_0 conda-forge\n\norderedset-2.0 100% |################################| Time: 0:00:00  55.89 MB/s\nratelim-0.1.6- 100% |################################| Time: 0:00:00  12.94 MB/s\ngeocoder-1.38. 100% |################################| Time: 0:00:00  45.23 MB/s\n"
+                }
+            ], 
+            "execution_count": 1
+        }, 
+        {
+            "source": "GeoCoder failing to return information", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "g = geocoder.google('Dallas, TX')\nprint(g.latlng)", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "stream", 
+                    "name": "stdout", 
+                    "text": "None\n"
+                }
+            ], 
+            "execution_count": 7
+        }, 
+        {
+            "source": "Reading In Geospatial Coordinates", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "\nimport types\nimport pandas as pd\nfrom botocore.client import Config\nimport ibm_boto3\n\ndef __iter__(self): return 0\n\n# @hidden_cell\n# The following code accesses a file in your IBM Cloud Object Storage. It includes your credentials.\n# You might want to remove those credentials before you share your notebook.\nclient_694e118a03004906a5d32366068ab263 = ibm_boto3.client(service_name='s3',\n    ibm_api_key_id='chK4DfNMPSBq3Z5lHfsOv46iKie43EHBVNm50_WGlCUB',\n    ibm_auth_endpoint=\"https://iam.bluemix.net/oidc/token\",\n    config=Config(signature_version='oauth'),\n    endpoint_url='https://s3-api.us-geo.objectstorage.service.networklayer.com')\n\nbody = client_694e118a03004906a5d32366068ab263.get_object(Bucket='capstoneproject-donotdelete-pr-kg9a71alalhvju',Key='Geospatial_Coordinates.csv')['Body']\n# add missing __iter__ method, so pandas accepts body as file-like object\nif not hasattr(body, \"__iter__\"): body.__iter__ = types.MethodType( __iter__, body )\n\n#df_data_1 = pd.read_csv(body)\n#df_data_1.head()\ngeodata = pd.read_csv(body)\ngeodata.head()", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "  Postal Code   Latitude  Longitude\n0         M1B  43.806686 -79.194353\n1         M1C  43.784535 -79.160497\n2         M1E  43.763573 -79.188711\n3         M1G  43.770992 -79.216917\n4         M1H  43.773136 -79.239476", 
+                        "text/html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Postal Code</th>\n      <th>Latitude</th>\n      <th>Longitude</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>M1B</td>\n      <td>43.806686</td>\n      <td>-79.194353</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>M1C</td>\n      <td>43.784535</td>\n      <td>-79.160497</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>M1E</td>\n      <td>43.763573</td>\n      <td>-79.188711</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>M1G</td>\n      <td>43.770992</td>\n      <td>-79.216917</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>M1H</td>\n      <td>43.773136</td>\n      <td>-79.239476</td>\n    </tr>\n  </tbody>\n</table>\n</div>"
+                    }, 
+                    "execution_count": 5, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 5
+        }, 
+        {
+            "source": "Renaming column \"Postal Code\" to \"Postcode\" to facilitate merging", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "geodata = geodata.rename(columns={'Postal Code': 'Postcode'})\ngeodata.head()", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "  Postcode   Latitude  Longitude\n0      M1B  43.806686 -79.194353\n1      M1C  43.784535 -79.160497\n2      M1E  43.763573 -79.188711\n3      M1G  43.770992 -79.216917\n4      M1H  43.773136 -79.239476", 
+                        "text/html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Postcode</th>\n      <th>Latitude</th>\n      <th>Longitude</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>M1B</td>\n      <td>43.806686</td>\n      <td>-79.194353</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>M1C</td>\n      <td>43.784535</td>\n      <td>-79.160497</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>M1E</td>\n      <td>43.763573</td>\n      <td>-79.188711</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>M1G</td>\n      <td>43.770992</td>\n      <td>-79.216917</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>M1H</td>\n      <td>43.773136</td>\n      <td>-79.239476</td>\n    </tr>\n  </tbody>\n</table>\n</div>"
+                    }, 
+                    "execution_count": 6, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 6
+        }, 
+        {
+            "source": "Merging DataFrames Mydata with Geospatial Coordinates", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "left = mydata\nright = geodata\ngeodata2 = pd.merge(left, right, on='Postcode')\ngeodata2 = geodata2.rename(columns={'Neighbourhood': 'Neighborhood'})\ngeodata2.head()", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "  Postcode           Borough      Neighborhood   Latitude  Longitude\n0      M3A        North York         Parkwoods  43.753259 -79.329656\n1      M4A        North York  Victoria Village  43.725882 -79.315572\n2      M5A  Downtown Toronto      Harbourfront  43.654260 -79.360636\n3      M5A  Downtown Toronto       Regent Park  43.654260 -79.360636\n4      M6A        North York  Lawrence Heights  43.718518 -79.464763", 
+                        "text/html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Postcode</th>\n      <th>Borough</th>\n      <th>Neighborhood</th>\n      <th>Latitude</th>\n      <th>Longitude</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>M3A</td>\n      <td>North York</td>\n      <td>Parkwoods</td>\n      <td>43.753259</td>\n      <td>-79.329656</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>M4A</td>\n      <td>North York</td>\n      <td>Victoria Village</td>\n      <td>43.725882</td>\n      <td>-79.315572</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>M5A</td>\n      <td>Downtown Toronto</td>\n      <td>Harbourfront</td>\n      <td>43.654260</td>\n      <td>-79.360636</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>M5A</td>\n      <td>Downtown Toronto</td>\n      <td>Regent Park</td>\n      <td>43.654260</td>\n      <td>-79.360636</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>M6A</td>\n      <td>North York</td>\n      <td>Lawrence Heights</td>\n      <td>43.718518</td>\n      <td>-79.464763</td>\n    </tr>\n  </tbody>\n</table>\n</div>"
+                    }, 
+                    "execution_count": 7, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 7
+        }, 
+        {
+            "source": "Exploring and Clustering Toronto", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "Creating a Unique Key for each record", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "#Extract Neighbohood to New DataFrame\nNConvert = geodata2[['Neighborhood']] \n\n#Remove Duplicate Values\nNConvert.drop_duplicates()\n\n#Create New Column with Numbers to Replace Neighborhood Names\nNConvert['Key'] = np.arange(len(NConvert))\nNConvert.head()", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "stream", 
+                    "name": "stderr", 
+                    "text": "/opt/conda/envs/DSX-Python35/lib/python3.5/site-packages/ipykernel/__main__.py:8: SettingWithCopyWarning: \nA value is trying to be set on a copy of a slice from a DataFrame.\nTry using .loc[row_indexer,col_indexer] = value instead\n\nSee the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy\n"
+                }, 
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "       Neighborhood  Key\n0         Parkwoods    0\n1  Victoria Village    1\n2      Harbourfront    2\n3       Regent Park    3\n4  Lawrence Heights    4", 
+                        "text/html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Neighborhood</th>\n      <th>Key</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Parkwoods</td>\n      <td>0</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Victoria Village</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>Harbourfront</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>Regent Park</td>\n      <td>3</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>Lawrence Heights</td>\n      <td>4</td>\n    </tr>\n  </tbody>\n</table>\n</div>"
+                    }, 
+                    "execution_count": 8, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 8
+        }, 
+        {
+            "source": "left = geodata2\nright = NConvert\ngeodata3 = pd.merge(left, right, on='Neighborhood')\ngeodata3.head()", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "  Postcode           Borough      Neighborhood   Latitude  Longitude  Key\n0      M3A        North York         Parkwoods  43.753259 -79.329656    0\n1      M4A        North York  Victoria Village  43.725882 -79.315572    1\n2      M5A  Downtown Toronto      Harbourfront  43.654260 -79.360636    2\n3      M5A  Downtown Toronto       Regent Park  43.654260 -79.360636    3\n4      M6A        North York  Lawrence Heights  43.718518 -79.464763    4", 
+                        "text/html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Postcode</th>\n      <th>Borough</th>\n      <th>Neighborhood</th>\n      <th>Latitude</th>\n      <th>Longitude</th>\n      <th>Key</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>M3A</td>\n      <td>North York</td>\n      <td>Parkwoods</td>\n      <td>43.753259</td>\n      <td>-79.329656</td>\n      <td>0</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>M4A</td>\n      <td>North York</td>\n      <td>Victoria Village</td>\n      <td>43.725882</td>\n      <td>-79.315572</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>M5A</td>\n      <td>Downtown Toronto</td>\n      <td>Harbourfront</td>\n      <td>43.654260</td>\n      <td>-79.360636</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>M5A</td>\n      <td>Downtown Toronto</td>\n      <td>Regent Park</td>\n      <td>43.654260</td>\n      <td>-79.360636</td>\n      <td>3</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>M6A</td>\n      <td>North York</td>\n      <td>Lawrence Heights</td>\n      <td>43.718518</td>\n      <td>-79.464763</td>\n      <td>4</td>\n    </tr>\n  </tbody>\n</table>\n</div>"
+                    }, 
+                    "execution_count": 9, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 9
+        }, 
+        {
+            "source": "Limit Data to only Toronto Neighborhoods", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "geodata4 = geodata3[(geodata3['Borough'].str.contains('Toronto'))]\n#print(geodata3)\ngeodata4.head()", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "   Postcode           Borough     Neighborhood   Latitude  Longitude  Key\n2       M5A  Downtown Toronto     Harbourfront  43.654260 -79.360636    2\n3       M5A  Downtown Toronto      Regent Park  43.654260 -79.360636    3\n13      M5B  Downtown Toronto          Ryerson  43.657162 -79.378937   13\n14      M5B  Downtown Toronto  Garden District  43.657162 -79.378937   14\n27      M5C  Downtown Toronto   St. James Town  43.651494 -79.375418   27", 
+                        "text/html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Postcode</th>\n      <th>Borough</th>\n      <th>Neighborhood</th>\n      <th>Latitude</th>\n      <th>Longitude</th>\n      <th>Key</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>2</th>\n      <td>M5A</td>\n      <td>Downtown Toronto</td>\n      <td>Harbourfront</td>\n      <td>43.654260</td>\n      <td>-79.360636</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>M5A</td>\n      <td>Downtown Toronto</td>\n      <td>Regent Park</td>\n      <td>43.654260</td>\n      <td>-79.360636</td>\n      <td>3</td>\n    </tr>\n    <tr>\n      <th>13</th>\n      <td>M5B</td>\n      <td>Downtown Toronto</td>\n      <td>Ryerson</td>\n      <td>43.657162</td>\n      <td>-79.378937</td>\n      <td>13</td>\n    </tr>\n    <tr>\n      <th>14</th>\n      <td>M5B</td>\n      <td>Downtown Toronto</td>\n      <td>Garden District</td>\n      <td>43.657162</td>\n      <td>-79.378937</td>\n      <td>14</td>\n    </tr>\n    <tr>\n      <th>27</th>\n      <td>M5C</td>\n      <td>Downtown Toronto</td>\n      <td>St. James Town</td>\n      <td>43.651494</td>\n      <td>-79.375418</td>\n      <td>27</td>\n    </tr>\n  </tbody>\n</table>\n</div>"
+                    }, 
+                    "execution_count": 10, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 10
+        }, 
+        {
+            "source": "Drop all columns with categorical data", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "FinalData = geodata4.drop(columns=['Postcode', 'Borough','Neighborhood'])\nFinalData.head()", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "     Latitude  Longitude  Key\n2   43.654260 -79.360636    2\n3   43.654260 -79.360636    3\n13  43.657162 -79.378937   13\n14  43.657162 -79.378937   14\n27  43.651494 -79.375418   27", 
+                        "text/html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Latitude</th>\n      <th>Longitude</th>\n      <th>Key</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>2</th>\n      <td>43.654260</td>\n      <td>-79.360636</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>43.654260</td>\n      <td>-79.360636</td>\n      <td>3</td>\n    </tr>\n    <tr>\n      <th>13</th>\n      <td>43.657162</td>\n      <td>-79.378937</td>\n      <td>13</td>\n    </tr>\n    <tr>\n      <th>14</th>\n      <td>43.657162</td>\n      <td>-79.378937</td>\n      <td>14</td>\n    </tr>\n    <tr>\n      <th>27</th>\n      <td>43.651494</td>\n      <td>-79.375418</td>\n      <td>27</td>\n    </tr>\n  </tbody>\n</table>\n</div>"
+                    }, 
+                    "execution_count": 15, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 15
+        }, 
+        {
+            "source": "geodata5.shape", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "(77, 3)"
+                    }, 
+                    "execution_count": 13, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 13
+        }, 
+        {
+            "source": "Normalizing FinalData", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "Clus_dataSet = StandardScaler().fit_transform(FinalData)\n#Clus_dataSet", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [], 
+            "execution_count": 23
+        }, 
+        {
+            "source": "Applying K-Means to and looking at cluster labels", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "clusterNum = 3\nk_means = KMeans(init = \"k-means++\", n_clusters = clusterNum, n_init = 12)\nk_means.fit(Clus_dataSet)\nk_means_labels = k_means.labels_\nprint(k_means_labels)", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "stream", 
+                    "name": "stdout", 
+                    "text": "[2 2 2 2 2 0 2 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0 0 0 2 2 2 2 2 1 1 0\n 0 1 1 1 0 0 1 1 1 1 0 0 1 0 0 0 1 1 0 0 0 1 1 1 1 1 0 0 0 0 0 0 0 1 0 1 0\n 0 1 1]\n"
+                }
+            ], 
+            "execution_count": 33
+        }, 
+        {
+            "source": "Assign Labels to Each Row", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "FinalData[\"Clus_km\"] = k_means_labels\nFinalData.head()", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "     Latitude  Longitude  Key  Clus_km\n2   43.654260 -79.360636    2        2\n3   43.654260 -79.360636    3        2\n13  43.657162 -79.378937   13        2\n14  43.657162 -79.378937   14        2\n27  43.651494 -79.375418   27        2", 
+                        "text/html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Latitude</th>\n      <th>Longitude</th>\n      <th>Key</th>\n      <th>Clus_km</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>2</th>\n      <td>43.654260</td>\n      <td>-79.360636</td>\n      <td>2</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>43.654260</td>\n      <td>-79.360636</td>\n      <td>3</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>13</th>\n      <td>43.657162</td>\n      <td>-79.378937</td>\n      <td>13</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>14</th>\n      <td>43.657162</td>\n      <td>-79.378937</td>\n      <td>14</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>27</th>\n      <td>43.651494</td>\n      <td>-79.375418</td>\n      <td>27</td>\n      <td>2</td>\n    </tr>\n  </tbody>\n</table>\n</div>"
+                    }, 
+                    "execution_count": 35, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 35
+        }, 
+        {
+            "source": "Get Coordinates of Cluster Centers", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "k_means_cluster_centers = k_means.cluster_centers_\nk_means_cluster_centers", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "execute_result", 
+                    "data": {
+                        "text/plain": "array([[-0.76050283, -0.64265006,  0.6293554 ],\n       [ 1.19594957,  0.08813117,  0.69896474],\n       [-0.22544197,  0.50931089, -1.09449878]])"
+                    }, 
+                    "execution_count": 36, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 36
+        }, 
+        {
+            "source": "Plot CLusters", 
+            "cell_type": "markdown", 
+            "metadata": {}
+        }, 
+        {
+            "source": "# Initialize the plot with the specified dimensions.\nfig = plt.figure(figsize=(6, 4))\n\n# Colors uses a color map, which will produce an array of colors based on\n# the number of labels there are. We use set(k_means_labels) to get the\n# unique labels.\ncolors = plt.cm.Spectral(np.linspace(0, 1, len(set(k_means_labels))))\n\n# Create a plot\nax = fig.add_subplot(1, 1, 1)\n\n# For loop that plots the data points and centroids.\n# k will range from 0-3, which will match the possible clusters that each\n# data point is in.\nfor k, col in zip(range(len([[4,4], [-2, -1], [2, -3], [1, 1]])), colors):\n\n    # Create a list of all data points, where the data poitns that are \n    # in the cluster (ex. cluster 0) are labeled as true, else they are\n    # labeled as false.\n    my_members = (k_means_labels == k)\n    \n    # Define the centroid, or cluster center.\n    cluster_center = k_means_cluster_centers[k]\n        \n    # Plots the datapoints with color col.\n    ax.plot(FinalData[my_members, 0], FinalData[my_members, 1], 'w', markerfacecolor=col, marker='.')\n    \n    # Plots the centroids with specified color, but with a darker outline\n    ax.plot(cluster_center[0], cluster_center[1], 'o', markerfacecolor=col,  markeredgecolor='k', markersize=6)\n\n# Title of the plot\nax.set_title('KMeans')\n\n# Remove x-axis ticks\nax.set_xticks(())\n\n# Remove y-axis ticks\nax.set_yticks(())\n\n# Show the plot\nplt.show()\n", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [
+                {
+                    "output_type": "error", 
+                    "evalue": "unhashable type: 'numpy.ndarray'", 
+                    "traceback": [
+                        "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m", 
+                        "\u001b[0;31mTypeError\u001b[0m                                 Traceback (most recent call last)", 
+                        "\u001b[0;32m<ipython-input-38-805cbece91db>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m()\u001b[0m\n\u001b[1;32m     24\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     25\u001b[0m     \u001b[0;31m# Plots the datapoints with color col.\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 26\u001b[0;31m     \u001b[0max\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mplot\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mFinalData\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mmy_members\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;36m0\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mFinalData\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mmy_members\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;36m1\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m'w'\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mmarkerfacecolor\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mcol\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mmarker\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;34m'.'\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     27\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     28\u001b[0m     \u001b[0;31m# Plots the centroids with specified color, but with a darker outline\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n", 
+                        "\u001b[0;32m/opt/conda/envs/DSX-Python35/lib/python3.5/site-packages/pandas/core/frame.py\u001b[0m in \u001b[0;36m__getitem__\u001b[0;34m(self, key)\u001b[0m\n\u001b[1;32m   2137\u001b[0m             \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_getitem_multilevel\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mkey\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   2138\u001b[0m         \u001b[0;32melse\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m-> 2139\u001b[0;31m             \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_getitem_column\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mkey\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m   2140\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   2141\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0m_getitem_column\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mkey\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n", 
+                        "\u001b[0;32m/opt/conda/envs/DSX-Python35/lib/python3.5/site-packages/pandas/core/frame.py\u001b[0m in \u001b[0;36m_getitem_column\u001b[0;34m(self, key)\u001b[0m\n\u001b[1;32m   2144\u001b[0m         \u001b[0;31m# get column\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   2145\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mcolumns\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mis_unique\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m-> 2146\u001b[0;31m             \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_get_item_cache\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mkey\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m   2147\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   2148\u001b[0m         \u001b[0;31m# duplicate columns & possible reduce dimensionality\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n", 
+                        "\u001b[0;32m/opt/conda/envs/DSX-Python35/lib/python3.5/site-packages/pandas/core/generic.py\u001b[0m in \u001b[0;36m_get_item_cache\u001b[0;34m(self, item)\u001b[0m\n\u001b[1;32m   1838\u001b[0m         \u001b[0;34m\"\"\"Return the cached item, item represents a label indexer.\"\"\"\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1839\u001b[0m         \u001b[0mcache\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_item_cache\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m-> 1840\u001b[0;31m         \u001b[0mres\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mcache\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mget\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mitem\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m   1841\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mres\u001b[0m \u001b[0;32mis\u001b[0m \u001b[0;32mNone\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1842\u001b[0m             \u001b[0mvalues\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_data\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mget\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mitem\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n", 
+                        "\u001b[0;31mTypeError\u001b[0m: unhashable type: 'numpy.ndarray'"
+                    ], 
+                    "ename": "TypeError"
+                }, 
+                {
+                    "output_type": "display_data", 
+                    "data": {
+                        "image/png": "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\n", 
+                        "text/plain": "<matplotlib.figure.Figure at 0x7f3b5e184cf8>"
+                    }, 
+                    "metadata": {}
+                }
+            ], 
+            "execution_count": 38
+        }, 
+        {
+            "source": "", 
+            "cell_type": "code", 
+            "metadata": {}, 
+            "outputs": [], 
+            "execution_count": null
+        }
+    ], 
+    "metadata": {
+        "kernelspec": {
+            "display_name": "Python 3.5", 
+            "name": "python3", 
+            "language": "python"
+        }, 
+        "language_info": {
+            "mimetype": "text/x-python", 
+            "nbconvert_exporter": "python", 
+            "version": "3.5.5", 
+            "name": "python", 
+            "file_extension": ".py", 
+            "pygments_lexer": "ipython3", 
+            "codemirror_mode": {
+                "version": 3, 
+                "name": "ipython"
+            }
+        }
+    }, 
+    "nbformat": 4
+}
